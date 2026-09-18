@@ -324,6 +324,7 @@
   }
   .contact-form button{ align-self:flex-start; border:1px solid var(--accent-cyan); position:relative; }
   .cf-status{ margin-left:8px; font-family:'IBM Plex Mono'; font-size:12px; }
+  .cf-hidden{ position:absolute; left:-9999px; }
   .cf-note{ font-size:12.5px; color:var(--ink-dim); margin:0; }
 </style>
 </head>
@@ -726,14 +727,16 @@
       <h2 class="sec-title">Let's talk about a role.</h2>
       <p class="sec-intro" style="margin-bottom:32px;">Open to full stack and MERN opportunities — happy to walk through any of the projects above in more depth.</p>
 
-      <form class="contact-form" id="contact-form">
+      <form class="contact-form" id="contact-form" name="contact" method="POST" data-netlify="true" netlify-honeypot="bot-field">
+        <input type="hidden" name="form-name" value="contact" />
+        <p class="cf-hidden"><label>Don't fill this out if you're human: <input name="bot-field" /></label></p>
         <div class="cf-row">
           <label for="cf-name">Name<input type="text" id="cf-name" name="name" required autocomplete="name"></label>
           <label for="cf-email">Your email<input type="email" id="cf-email" name="email" required autocomplete="email"></label>
         </div>
         <label for="cf-message">Message<textarea id="cf-message" name="message" rows="5" required></textarea></label>
-        <button type="submit" class="btn btn-primary">Send via email<span id="cf-status" class="cf-status"></span></button>
-        <p class="cf-note">Opens your email app with this filled in and addressed to maheshmane9075@gmail.com — nothing is sent from this page directly.</p>
+        <button type="submit" class="btn btn-primary" id="cf-submit">Send message<span id="cf-status" class="cf-status"></span></button>
+        <p class="cf-note" id="cf-note">Delivered straight to my inbox — no email app needed.</p>
       </form>
     </div>
     <div class="contact-links">
@@ -765,19 +768,43 @@
   (function(){
     var form = document.getElementById('contact-form');
     if(!form) return;
+
+    function encode(data){
+      return Object.keys(data).map(function(k){
+        return encodeURIComponent(k) + "=" + encodeURIComponent(data[k]);
+      }).join("&");
+    }
+
     form.addEventListener('submit', function(e){
       e.preventDefault();
-      var name = document.getElementById('cf-name').value.trim();
-      var email = document.getElementById('cf-email').value.trim();
-      var message = document.getElementById('cf-message').value.trim();
-      var subject = 'Portfolio contact from ' + name;
-      var body = message + '\n\n— ' + name + ' (' + email + ')';
-      var mailto = 'mailto:maheshmane9075@gmail.com'
-        + '?subject=' + encodeURIComponent(subject)
-        + '&body=' + encodeURIComponent(body);
-      window.location.href = mailto;
+      var submitBtn = document.getElementById('cf-submit');
       var status = document.getElementById('cf-status');
-      if(status){ status.textContent = ' · opening your email app…'; }
+      var note = document.getElementById('cf-note');
+      var payload = {
+        'form-name': 'contact',
+        name: document.getElementById('cf-name').value.trim(),
+        email: document.getElementById('cf-email').value.trim(),
+        message: document.getElementById('cf-message').value.trim()
+      };
+
+      submitBtn.disabled = true;
+      if(status){ status.textContent = ' · sending…'; }
+
+      fetch('/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: encode(payload)
+      })
+      .then(function(){
+        if(status){ status.textContent = ' · sent'; }
+        if(note){ note.textContent = 'Thanks — message sent. I\u2019ll reply by email soon.'; }
+        form.reset();
+      })
+      .catch(function(){
+        submitBtn.disabled = false;
+        if(status){ status.textContent = ''; }
+        if(note){ note.textContent = 'Something went wrong — email me directly at maheshmane9075@gmail.com instead.'; }
+      });
     });
   })();
 </script>
